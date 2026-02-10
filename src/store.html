@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AutoAssist Spare Parts Store</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#137fec",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101922",
+                        "header-dark": "#1a2632",
+                    },
+                    fontFamily: {
+                        "display": ["Manrope"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Manrope', sans-serif; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen">
+<!-- iOS Status Bar Placeholder -->
+<div class="h-12 bg-header-dark w-full"></div>
+<!-- Header Section -->
+<header class="bg-header-dark px-5 pt-2 pb-8 rounded-b-3xl shadow-xl">
+<div class="flex justify-between items-start mb-6">
+<div>
+<h1 class="text-white text-2xl font-bold tracking-tight">Parts Store</h1>
+<p class="text-slate-400 text-sm">Find parts for your car</p>
+</div>
+<div class="relative">
+<div class="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center backdrop-blur-md border border-white/10">
+<span class="material-icons text-white">shopping_cart</span>
+</div>
+<span class="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full border-2 border-header-dark">
+                    3
+                </span>
+</div>
+</div>
+<!-- Search Bar -->
+<div class="relative group">
+<span class="material-icons absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">search</span>
+<input class="w-full bg-white/10 border-none rounded-xl py-3.5 pl-12 pr-4 text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary/50 transition-all" placeholder="Search engine oil, tires, brakes..." type="text"/>
+</div>
+</header>
+<main class="px-5 -mt-4">
+<!-- Horizontal Categories -->
+<div class="flex overflow-x-auto hide-scrollbar gap-3 mb-6">
+<button class="bg-primary text-white px-6 py-2.5 rounded-full font-semibold whitespace-nowrap shadow-lg shadow-primary/20">
+                Engine
+            </button>
+<button class="bg-white dark:bg-background-dark/50 text-slate-600 dark:text-slate-400 px-6 py-2.5 rounded-full font-semibold whitespace-nowrap border border-slate-200 dark:border-slate-800">
+                Oil &amp; Fluids
+            </button>
+<button class="bg-white dark:bg-background-dark/50 text-slate-600 dark:text-slate-400 px-6 py-2.5 rounded-full font-semibold whitespace-nowrap border border-slate-200 dark:border-slate-800">
+                Tires
+            </button>
+<button class="bg-white dark:bg-background-dark/50 text-slate-600 dark:text-slate-400 px-6 py-2.5 rounded-full font-semibold whitespace-nowrap border border-slate-200 dark:border-slate-800">
+                Brakes
+            </button>
+<button class="bg-white dark:bg-background-dark/50 text-slate-600 dark:text-slate-400 px-6 py-2.5 rounded-full font-semibold whitespace-nowrap border border-slate-200 dark:border-slate-800">
+                Batteries
+            </button>
+</div>
+<!-- Featured Banner -->
+<section class="relative overflow-hidden rounded-2xl mb-8 group">
+<div class="absolute inset-0 bg-gradient-to-r from-header-dark via-header-dark/80 to-transparent z-10"></div>
+<img alt="Engine Maintenance" class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" data-alt="Professional mechanic working on a car engine" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDySKNhcRSvTwXmD8zIVphhC9qzmbzctmJ_BebtLriHJ6UCAgG2CR_3FeO4aVmfiZg6pJuziEQ9w8GiOIdtIf5p5VvZic2s7dGGJo_30jRVdC_yJeWjsDMT-SUF_EJgcYTphmM4LDI-IVmSxh7Vky8dm68jiRaI4oMdYDdY8z_25M83tjkuJL_vXzokyKWbTnIgS7pDBC2nfR3cyutl7-85fSg0kzmh7hLPIGaALZG1erGYNOvZITH1TXkdzJIjX359ukb7Jo7K9boF"/>
+<div class="relative z-20 p-6 flex flex-col items-start justify-center min-h-[160px]">
+<span class="bg-primary/20 text-primary text-[10px] font-extrabold tracking-widest uppercase mb-2 px-2 py-0.5 rounded backdrop-blur-sm">Limited Offer</span>
+<h2 class="text-white text-2xl font-extrabold mb-1">20% off Engine Oil</h2>
+<p class="text-slate-300 text-xs mb-4 max-w-[180px]">Keep your engine running smooth with premium lubricants.</p>
+<button class="bg-primary hover:bg-blue-600 text-white text-xs font-bold px-5 py-2.5 rounded-lg transition-colors shadow-lg shadow-primary/30">
+                    Shop Now
+                </button>
+</div>
+</section>
+<!-- Product Grid Title -->
+<div class="flex justify-between items-center mb-4">
+<h3 class="text-lg font-bold text-slate-800 dark:text-white">Recommended</h3>
+<button class="text-primary text-sm font-semibold">See All</button>
+</div>
+<!-- Product Grid -->
+<div class="grid grid-cols-2 gap-4 pb-24">
+<!-- Product 1 -->
+<div class="bg-white dark:bg-slate-900 rounded-2xl p-3 shadow-sm border border-slate-100 dark:border-slate-800 group">
+<div class="bg-background-light dark:bg-slate-800 rounded-xl mb-3 relative overflow-hidden aspect-square flex items-center justify-center p-4">
+<img alt="Engine Oil" class="w-full h-full object-contain group-hover:scale-110 transition-transform duration-500" data-alt="Black and gold engine oil container" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD0Y98xe6nf-H9fkL3df8-TffGmtojZBQfWR3UUDBYJxWl0VFlLMYwpMRcb8Bg-cN3vwf4aIUBEorn9MzS8nzJfIDO1W2iU6oyasJGcvlzYsmAoK4Ot5iOONT_bu9EDiCX0hso6zGbxRNw0_l6FATETVXRHANvGiqggCDpPmjwow_sUQSapr19wCVIyvU6h2ZzUjWFkhT0OBXxa6rjBUVgUCEUAt-yzVB7jlnnirC1vICdjpRGZlYeurdcRVDqlUF3OzU-gtOzNTBAa"/>
+</div>
+<h4 class="text-xs font-semibold text-slate-500 mb-1 uppercase tracking-tighter">Castrol</h4>
+<p class="text-sm font-bold text-slate-800 dark:text-slate-100 leading-tight mb-2 line-clamp-1">Engine Oil 5W-30</p>
+<div class="flex justify-between items-center mt-auto">
+<span class="text-lg font-extrabold text-primary">$45.00</span>
+<button class="w-9 h-9 bg-primary text-white rounded-xl flex items-center justify-center shadow-lg shadow-primary/20 active:scale-90 transition-transform">
+<span class="material-icons text-sm">add</span>
+</button>
+</div>
+</div>
+<!-- Product 2 -->
+<div class="bg-white dark:bg-slate-900 rounded-2xl p-3 shadow-sm border border-slate-100 dark:border-slate-800 group">
+<div class="bg-background-light dark:bg-slate-800 rounded-xl mb-3 relative overflow-hidden aspect-square flex items-center justify-center p-4">
+<img alt="Performance Tire" class="w-full h-full object-contain group-hover:scale-110 transition-transform duration-500" data-alt="Modern high performance car tire" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDnA_U3xnA2MUon-Ia6ihoska-ISw78jtqsSwFfFBK3G-yIin6w2LaQkhx2HPgx-a96IpZHpCa2xxwFtSUFsB9hMXbSMVEj678C5cSJBhMevz2Je4BYbUvkMvBpmNkp-J4Dw9x5BJ1BSkRxTmS3eqwcnPO2JY52_B3eeoNOHOdWdME-rmQT2g4GyEOucgJzq8TFYqmoyr9dVNX9lTjHEI7k6uptIMvCvxXOmAuxPLUpcmRl_on37pN_7svs8oa_sW2ZeNX6JCkBk3zg"/>
+</div>
+<h4 class="text-xs font-semibold text-slate-500 mb-1 uppercase tracking-tighter">Michelin</h4>
+<p class="text-sm font-bold text-slate-800 dark:text-slate-100 leading-tight mb-2 line-clamp-1">Pilot Sport 4S</p>
+<div class="flex justify-between items-center mt-auto">
+<span class="text-lg font-extrabold text-primary">$180.00</span>
+<button class="w-9 h-9 bg-primary text-white rounded-xl flex items-center justify-center shadow-lg shadow-primary/20 active:scale-90 transition-transform">
+<span class="material-icons text-sm">add</span>
+</button>
+</div>
+</div>
+<!-- Product 3 -->
+<div class="bg-white dark:bg-slate-900 rounded-2xl p-3 shadow-sm border border-slate-100 dark:border-slate-800 group">
+<div class="bg-background-light dark:bg-slate-800 rounded-xl mb-3 relative overflow-hidden aspect-square flex items-center justify-center p-4">
+<img alt="Brake Pads" class="w-full h-full object-contain group-hover:scale-110 transition-transform duration-500" data-alt="New set of metallic automotive brake pads" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAEwn_-DqFPbqLVxOryH-Iu2zLtGiJAi1Qnr5EATpiMZKNSkvtMJ7yXvXef3Gux1mWXgjeDtbC3C5laOSPt7jqK_jqb-alZTcGMa4VF8oT911sNtcXCFCjrvRiGoVyTyr8kaOTAPbCFvqBfWq0Z8i6hDZg6phhdLmqoxHJNxRb4J5xq6-WTEKOqBE6wtyi8lO_8LoICQKkKcPYyuolQ9X8kiEz0SfUyznjhnaGj4FK9QH0VU36eWZ8wPz3wikAjBTw69QdBkRMBoTps"/>
+</div>
+<h4 class="text-xs font-semibold text-slate-500 mb-1 uppercase tracking-tighter">Bosch</h4>
+<p class="text-sm font-bold text-slate-800 dark:text-slate-100 leading-tight mb-2 line-clamp-1">Premium Brake Pads</p>
+<div class="flex justify-between items-center mt-auto">
+<span class="text-lg font-extrabold text-primary">$65.00</span>
+<button class="w-9 h-9 bg-primary text-white rounded-xl flex items-center justify-center shadow-lg shadow-primary/20 active:scale-90 transition-transform">
+<span class="material-icons text-sm">add</span>
+</button>
+</div>
+</div>
+<!-- Product 4 -->
+<div class="bg-white dark:bg-slate-900 rounded-2xl p-3 shadow-sm border border-slate-100 dark:border-slate-800 group">
+<div class="bg-background-light dark:bg-slate-800 rounded-xl mb-3 relative overflow-hidden aspect-square flex items-center justify-center p-4">
+<img alt="Car Battery" class="w-full h-full object-contain group-hover:scale-110 transition-transform duration-500" data-alt="High capacity car battery unit" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCwVu6zaJ6xPOUUo0a3TWamRZLyJ00PE25Ets9JF4tE5r9bxj4TE0fraiqorGcbjrWl5ql_oLdC7b-5r1MJURWq21G4W-xZlqtxt5_htQEBvnpU1z7l0q2ZAhUW8dRRdWaB-4JRlf-Pp9L5yJswzlnu_zCKWTz29ZADfuEOmjdoeaKbt8E45T99YuuxeosD59DsnyGVEHy2LgO2UxEDPCzlag6CJLfTQDYyA0FvpyOiI-6pWd0eUF1SFLTNqBG2codiIuGbjdr8Kpzq"/>
+</div>
+<h4 class="text-xs font-semibold text-slate-500 mb-1 uppercase tracking-tighter">Varta</h4>
+<p class="text-sm font-bold text-slate-800 dark:text-slate-100 leading-tight mb-2 line-clamp-1">Blue Dynamic E11</p>
+<div class="flex justify-between items-center mt-auto">
+<span class="text-lg font-extrabold text-primary">$120.00</span>
+<button class="w-9 h-9 bg-primary text-white rounded-xl flex items-center justify-center shadow-lg shadow-primary/20 active:scale-90 transition-transform">
+<span class="material-icons text-sm">add</span>
+</button>
+</div>
+</div>
+</div>
+</main>
+<!-- Navigation Bar (iOS Style) -->
+<nav class="fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-background-dark/80 backdrop-blur-xl border-t border-slate-200 dark:border-slate-800 px-8 py-3 pb-8 flex justify-between items-center z-50">
+<div class="flex flex-col items-center">
+<span class="material-icons text-slate-400">home</span>
+<span class="text-[10px] mt-1 font-bold text-slate-400">Home</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="material-icons text-primary">storefront</span>
+<span class="text-[10px] mt-1 font-bold text-primary">Store</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="material-icons text-slate-400">build</span>
+<span class="text-[10px] mt-1 font-bold text-slate-400">Service</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="material-icons text-slate-400">person_outline</span>
+<span class="text-[10px] mt-1 font-bold text-slate-400">Profile</span>
+</div>
+</nav>
+<!-- iOS Home Indicator -->
+<div class="fixed bottom-1 left-1/2 -translate-x-1/2 w-32 h-1 bg-slate-300 dark:bg-slate-700 rounded-full z-[60]"></div>
+</body></html>

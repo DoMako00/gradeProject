@@ -1,0 +1,78 @@
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { CompositeScreenProps } from '@react-navigation/native';
+import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+
+export type AuthStackParamList = {
+  Login: undefined;
+  Register: undefined;
+};
+
+export type UserTabParamList = {
+  Home: undefined;
+  Bookings: undefined;
+  Store: undefined;
+  Profile: undefined;
+};
+
+export type MechanicTabParamList = {
+  Requests: undefined;
+  Jobs: undefined;
+  Bookings: undefined;
+  Profile: undefined;
+};
+
+export type SellerTabParamList = {
+  Store: undefined;
+  Orders: undefined;
+  Profile: undefined;
+};
+
+export type RootStackParamList = {
+  Auth: undefined;
+  UserTabs: undefined;
+  MechanicTabs: undefined;
+  SellerTabs: undefined;
+};
+
+export type UserStackParamList = {
+  UserTabs: undefined;
+  Store: undefined;
+  Searching: { requestId: string };
+  ActiveJob: { requestId: string };
+  MechanicList: undefined;
+  MechanicProfile: { mechanicId: string };
+  Booking: { mechanicId: string };
+  BookingSuccess: { bookingId?: string };
+};
+
+export type MechanicStackParamList = {
+  MechanicTabs: undefined;
+  ActiveJob: { requestId: string };
+};
+
+export type AuthStackScreenProps<T extends keyof AuthStackParamList> =
+  NativeStackScreenProps<AuthStackParamList, T>;
+
+export type UserStackScreenProps<T extends keyof UserStackParamList> =
+  NativeStackScreenProps<UserStackParamList, T>;
+
+export type UserTabScreenProps<T extends keyof UserTabParamList> =
+  CompositeScreenProps<
+    BottomTabScreenProps<UserTabParamList, T>,
+    NativeStackScreenProps<UserStackParamList>
+  >;
+
+export type MechanicTabScreenProps<T extends keyof MechanicTabParamList> =
+  CompositeScreenProps<
+    BottomTabScreenProps<MechanicTabParamList, T>,
+    NativeStackScreenProps<MechanicStackParamList>
+  >;
+
+export type MechanicStackScreenProps<T extends keyof MechanicStackParamList> =
+  NativeStackScreenProps<MechanicStackParamList, T>;
+
+export type SellerTabScreenProps<T extends keyof SellerTabParamList> =
+  CompositeScreenProps<
+    BottomTabScreenProps<SellerTabParamList, T>,
+    NativeStackScreenProps<RootStackParamList>
+  >;
