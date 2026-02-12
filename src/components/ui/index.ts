@@ -25,3 +25,7 @@ export { StoreFeaturedBanner } from './StoreFeaturedBanner';
 export { ProductCard } from './ProductCard';
 export type { ProductCardProps } from './ProductCard';
 export { FloatingIconsBackground } from './FloatingIconsBackground';
+export { CartoonStoreHeader } from './CartoonStoreHeader';
+export { CartoonFeaturedCard } from './CartoonFeaturedCard';
+export { CartoonCategoryCard } from './CartoonCategoryCard';
+export { CartoonProductCard } from './CartoonProductCard';

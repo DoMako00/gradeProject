@@ -33,6 +33,27 @@ export const colors = {
   orange: '#C41E3A',
   indigo: '#8B0000',
   purple: '#8B0000',
+
+  // ─── Cartoon Store palette ───
+  cartoon: {
+    red: '#FF4D5A',
+    redLight: '#FF7A83',
+    cream: '#FFF4F4',
+    creamDark: '#FFE8E8',
+    mint: '#7EEAB3',
+    mintBg: '#E8FFF3',
+    blue: '#6EC6FF',
+    blueBg: '#E8F4FF',
+    yellow: '#FFD66B',
+    yellowBg: '#FFF8E8',
+    purple: '#C4A1FF',
+    purpleBg: '#F3ECFF',
+    orange: '#FFB067',
+    orangeBg: '#FFF2E8',
+    charcoal: '#1E1E1E',
+    gray: '#8E8E8E',
+    lightGray: '#F7F0F0',
+  },
 } as const;
 
 export const spacing = {
