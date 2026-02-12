@@ -1,275 +1,411 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
-import {
-  Text,
-  StyleSheet,
-  FlatList,
-  Alert,
-  RefreshControl,
-} from 'react-native';
-import type { RealtimeChannel } from '@supabase/supabase-js';
-import { ScreenContainer, Header, Button, Card, Spinner } from '../../../components/ui';
-import { supabase } from '../../../lib/supabase';
-import { getMechanicId, useMechanicLocationUpdates } from '../../../lib/mechanicHelpers';
-import { getCurrentPosition } from '../../../utils/location';
-import { distanceKm } from '../../../utils/location';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { gsap } from 'gsap';
+import { ScreenContainer, CartoonActionButton, SketchFill } from '../../../components/ui';
 import { theme } from '../../../theme';
 import type { MechanicTabScreenProps } from '../../../types/navigation';
+import { mechanicOrigin, mockMechanicRequests, type MechanicRequestItem } from '../data/mockMechanicData';
+import { getRequestMarkerColor } from '../utils/mapHelpers';
+import { getCurrentPosition, distanceKm } from '../../../utils/location';
+import { OptionalMapView, OptionalMarker } from '../utils/optionalMaps';
 
-type PendingRequest = {
-  id: string;
-  status: string;
-  problem_description: string | null;
-  location_lat: number | null;
-  location_lng: number | null;
-  created_at: string;
-};
-
-type RequestWithDistance = PendingRequest & { distanceKm: number | null };
-
+type RequestWithDistance = MechanicRequestItem;
 type Props = MechanicTabScreenProps<'Requests'>;
 
 export function RequestsNearbyScreen({ navigation }: Props) {
-  const [requests, setRequests] = useState<RequestWithDistance[]>([]);
-  const [myLocation, setMyLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [mechanicId, setMechanicId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [acceptingId, setAcceptingId] = useState<string | null>(null);
-  const channelRef = useRef<RealtimeChannel | null>(null);
+  const { width } = useWindowDimensions();
+  const cardWidth = Math.min(width - theme.spacing.md * 2, 430);
+  const [requests, setRequests] = useState<RequestWithDistance[]>(mockMechanicRequests);
+  const [selectedId, setSelectedId] = useState<string | null>(mockMechanicRequests[0]?.id ?? null);
+  const [frontMotion, setFrontMotion] = useState({ y: 18, opacity: 0.92, scale: 0.96 });
+  const frontMotionRef = useRef({ y: 18, opacity: 0.92, scale: 0.96 });
 
-  useMechanicLocationUpdates();
+  const selectedRequest = useMemo(
+    () => requests.find((request) => request.id === selectedId) ?? null,
+    [requests, selectedId]
+  );
 
-  const fetchPending = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('requests')
-      .select('id, status, problem_description, location_lat, location_lng, created_at')
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false });
+  const pendingCount = useMemo(
+    () => requests.filter((request) => request.status === 'pending').length,
+    [requests]
+  );
+  const stackedRequests = useMemo(() => {
+    if (!selectedRequest) return requests.slice(0, 3);
+    const rest = requests.filter((request) => request.id !== selectedRequest.id);
+    return [selectedRequest, ...rest].slice(0, 3);
+  }, [requests, selectedRequest]);
 
-    if (error) {
-      setRequests([]);
-      return;
-    }
-
-    const list = (data ?? []) as PendingRequest[];
-    setRequests(
-      list.map((r) => ({
-        ...r,
-        distanceKm: null,
-      }))
+  const handleRefresh = useCallback(async () => {
+    const position = await getCurrentPosition();
+    if (!position) return;
+    const { latitude, longitude } = position.coords;
+    setRequests((prev) =>
+      prev
+        .map((item) => ({
+          ...item,
+          distanceKm: distanceKm(latitude, longitude, item.locationLat, item.locationLng),
+        }))
+        .sort((a, b) => a.distanceKm - b.distanceKm)
     );
   }, []);
 
-  const applyDistance = useCallback(
-    (list: RequestWithDistance[], location: { lat: number; lng: number } | null) => {
-      if (!location) return list;
-      return [...list]
-        .map((r) => ({
-          ...r,
-          distanceKm:
-            r.location_lat != null && r.location_lng != null
-              ? distanceKm(location.lat, location.lng, r.location_lat, r.location_lng)
-              : null,
-        }))
-        .sort((a, b) => {
-          const da = a.distanceKm ?? Infinity;
-          const db = b.distanceKm ?? Infinity;
-          return da - db;
-        });
-    },
-    []
-  );
-
-  const loadInitial = useCallback(async () => {
-    setLoading(true);
-    const [mid, loc] = await Promise.all([getMechanicId(), getCurrentPosition()]);
-    setMechanicId(mid);
-    if (loc) {
-      setMyLocation({
-        lat: loc.coords.latitude,
-        lng: loc.coords.longitude,
-      });
-    }
-    await fetchPending();
-    setLoading(false);
-  }, [fetchPending]);
-
-  useEffect(() => {
-    loadInitial();
-  }, [loadInitial]);
-  useEffect(() => {
-    if (!myLocation) return;
-    setRequests((prev) => applyDistance(prev, myLocation));
-  }, [myLocation, applyDistance]);
-
-  useEffect(() => {
-    const channel = supabase
-      .channel('mechanic-pending-requests')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'requests' },
-        (payload) => {
-          const row = payload.new as PendingRequest;
-          if (row.status !== 'pending') return;
-          setRequests((prev) => {
-            const next = prev.some((r) => r.id === row.id)
-              ? prev
-              : [{ ...row, distanceKm: null }, ...prev];
-            return myLocation ? applyDistance(next, myLocation) : next;
-          });
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'requests' },
-        (payload) => {
-          const row = payload.new as PendingRequest;
-          setRequests((prev) => {
-            const next =
-              row.status === 'pending'
-                ? prev.map((r) => (r.id === row.id ? { ...row, distanceKm: r.distanceKm } : r))
-                : prev.filter((r) => r.id !== row.id);
-            return myLocation ? applyDistance(next, myLocation) : next;
-          });
-        }
-      )
-      .subscribe();
-
-    channelRef.current = channel;
-    return () => {
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current);
-        channelRef.current = null;
-      }
-    };
-  }, [myLocation, applyDistance]);
-
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await fetchPending();
-    if (myLocation) {
-      setRequests((prev) => applyDistance(prev, myLocation));
-    }
-    setRefreshing(false);
-  }, [fetchPending, myLocation, applyDistance]);
-
-  const handleAccept = useCallback(
-    async (requestId: string) => {
-      if (!mechanicId) {
-        Alert.alert('Error', 'Mechanic profile not found. Please complete your profile.');
-        return;
-      }
-      setAcceptingId(requestId);
-      const { data, error } = await supabase
-        .from('requests')
-        .update({ mechanic_id: mechanicId, status: 'accepted' })
-        .eq('id', requestId)
-        .eq('status', 'pending')
-        .select('id')
-        .maybeSingle();
-
-      setAcceptingId(null);
-      if (error) {
-        Alert.alert('Error', error.message);
-        return;
-      }
-      if (!data) {
-        Alert.alert('Request taken', 'This request was already accepted by another mechanic.');
-        setRequests((prev) => prev.filter((r) => r.id !== requestId));
-        return;
-      }
-      const parent = navigation.getParent();
-      if (parent) {
-        (parent as { navigate: (name: 'ActiveJob', params: { requestId: string }) => void }).navigate(
-          'ActiveJob',
-          { requestId }
-        );
-      }
-    },
-    [mechanicId, navigation]
-  );
-
-  if (loading) {
-    return (
-      <ScreenContainer>
-        <Header title="Requests nearby" />
-        <Spinner style={styles.spinner} />
-      </ScreenContainer>
+  const handleAccept = useCallback((requestId: string) => {
+    console.log('[RequestsNearby] Accept request', requestId);
+    setRequests((prev) =>
+      prev.map((item) => (item.id === requestId ? { ...item, status: 'accepted' } : item))
     );
-  }
+  }, []);
+
+  const handleReject = useCallback((requestId: string) => {
+    console.log('[RequestsNearby] Reject request', requestId);
+    setRequests((prev) =>
+      prev.map((item) => (item.id === requestId ? { ...item, status: 'rejected' } : item))
+    );
+  }, []);
+
+  const handleCycleCard = useCallback(
+    (direction: 'next' | 'prev') => {
+      if (!requests.length || !selectedId) return;
+      const currentIndex = requests.findIndex((item) => item.id === selectedId);
+      if (currentIndex < 0) return;
+      const nextIndex =
+        direction === 'next'
+          ? (currentIndex + 1) % requests.length
+          : (currentIndex - 1 + requests.length) % requests.length;
+      const next = requests[nextIndex];
+      if (next) {
+        setSelectedId(next.id);
+      }
+    },
+    [requests, selectedId]
+  );
+
+  useEffect(() => {
+    gsap.killTweensOf(frontMotionRef.current);
+    frontMotionRef.current.y = 18;
+    frontMotionRef.current.opacity = 0.92;
+    frontMotionRef.current.scale = 0.96;
+    setFrontMotion({ ...frontMotionRef.current });
+
+    gsap.to(frontMotionRef.current, {
+      y: 0,
+      opacity: 1,
+      scale: 1,
+      duration: 0.35,
+      ease: 'power3.out',
+      onUpdate: () => {
+        setFrontMotion({ ...frontMotionRef.current });
+      },
+    });
+  }, [selectedId]);
 
   return (
-    <ScreenContainer>
-      <Header title="Requests nearby" />
-      {!myLocation && (
-        <Text style={styles.locationHint}>Enable location to see distance and sort by nearby.</Text>
-      )}
-      {requests.length === 0 ? (
-        <Text style={styles.empty}>No pending requests nearby.</Text>
-      ) : (
-        <FlatList
-          data={requests}
-          keyExtractor={(item) => item.id}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primary]} />
-          }
-          renderItem={({ item }) => (
-            <Card style={styles.card}>
-              <Text style={styles.cardTitle}>
-                {item.problem_description || 'No description'}
-              </Text>
-              {item.distanceKm != null && (
-                <Text style={styles.distance}>{item.distanceKm.toFixed(1)} km away</Text>
-              )}
-              <Text style={styles.time}>
-                {new Date(item.created_at).toLocaleString()}
-              </Text>
-              <Button
-                title="Accept"
-                onPress={() => handleAccept(item.id)}
-                loading={acceptingId === item.id}
-                disabled={!!acceptingId || !mechanicId}
-                style={styles.acceptButton}
-              />
-            </Card>
-          )}
-        />
-      )}
+    <ScreenContainer style={styles.screen} edges={['top', 'left', 'right']}>
+      <View style={styles.mapHost}>
+        <OptionalMapView
+          style={StyleSheet.absoluteFill}
+          initialRegion={{
+            latitude: mechanicOrigin.lat,
+            longitude: mechanicOrigin.lng,
+            latitudeDelta: 0.05,
+            longitudeDelta: 0.05,
+          }}
+        >
+          {requests.map((request) => (
+            <OptionalMarker
+              key={request.id}
+              coordinate={{ latitude: request.locationLat, longitude: request.locationLng }}
+              pinColor={getRequestMarkerColor(request.status)}
+              onPress={() => {
+                setSelectedId(request.id);
+              }}
+            />
+          ))}
+        </OptionalMapView>
+
+        <View style={styles.topOverlay}>
+          <View style={styles.topCardShadow}>
+            <SketchFill />
+          </View>
+          <View style={styles.topCard}>
+            <View>
+              <Text style={styles.topTitle}>Nearby Requests</Text>
+              <Text style={styles.topSubtitle}>{pendingCount} pending nearby</Text>
+            </View>
+            <Pressable onPress={handleRefresh} style={styles.refreshButton}>
+              <MaterialCommunityIcons name="refresh" size={20} color={theme.colors.cartoon.charcoal} />
+            </Pressable>
+          </View>
+        </View>
+
+        {selectedRequest ? (
+          <View style={styles.stackWrap}>
+            {stackedRequests
+              .slice()
+              .reverse()
+              .map((item, reverseIndex) => {
+                const level = stackedRequests.length - reverseIndex - 1;
+                const isFront = level === 0;
+                return (
+                  <Pressable
+                    key={item.id}
+                    onPress={() => setSelectedId(item.id)}
+                    style={[
+                      styles.popupWrap,
+                      {
+                        width: cardWidth,
+                        transform: [
+                          { translateY: level * 10 + (isFront ? frontMotion.y : 0) },
+                          { scale: (1 - level * 0.03) * (isFront ? frontMotion.scale : 1) },
+                        ],
+                        zIndex: 20 - level,
+                        opacity: isFront ? frontMotion.opacity : 1 - level * 0.08,
+                      },
+                    ]}
+                  >
+                    <View style={styles.popupShadow}>
+                      <SketchFill />
+                    </View>
+                    <View style={styles.popupCard}>
+                      <View style={styles.popupHeader}>
+                        <Text style={styles.customerName} numberOfLines={1}>
+                          {item.customerName}
+                        </Text>
+                        <View style={styles.headerActions}>
+                          <Pressable
+                            style={styles.switchButton}
+                            onPress={() => handleCycleCard('prev')}
+                          >
+                            <MaterialCommunityIcons
+                              name="chevron-left"
+                              size={16}
+                              color={theme.colors.cartoon.charcoal}
+                            />
+                          </Pressable>
+                          <Pressable
+                            style={styles.switchButton}
+                            onPress={() => handleCycleCard('next')}
+                          >
+                            <MaterialCommunityIcons
+                              name="chevron-right"
+                              size={16}
+                              color={theme.colors.cartoon.charcoal}
+                            />
+                          </Pressable>
+                          <Pressable onPress={() => navigation.navigate('RequestDetails', { requestId: item.id })}>
+                            <Text style={styles.detailsLink}>Details</Text>
+                          </Pressable>
+                        </View>
+                      </View>
+                      <Text style={styles.problemText} numberOfLines={isFront ? 2 : 1}>
+                        {item.problem}
+                      </Text>
+                      <View style={styles.metaRow}>
+                        <Text style={styles.metaText}>{item.distanceKm.toFixed(1)} km</Text>
+                        <Text style={styles.metaText}>{item.requestTime}</Text>
+                      </View>
+                      {isFront ? (
+                        <View style={styles.actionsRow}>
+                          <View style={styles.actionCell}>
+                            <CartoonActionButton
+                              label="Decline"
+                              variant="reject"
+                              icon="close-circle-outline"
+                              onPress={() => handleReject(item.id)}
+                              fullWidth
+                            />
+                          </View>
+                          <View style={styles.actionCell}>
+                            <CartoonActionButton
+                              label="Accept"
+                              variant="accept"
+                              icon="check-circle-outline"
+                              onPress={() => handleAccept(item.id)}
+                              fullWidth
+                            />
+                          </View>
+                        </View>
+                      ) : null}
+                    </View>
+                  </Pressable>
+                );
+              })}
+          </View>
+        ) : (
+          <View style={styles.emptyCenter}>
+            <Text style={styles.emptyText}>Select a marker to manage request</Text>
+          </View>
+        )}
+      </View>
     </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  spinner: { marginTop: 48 },
-  locationHint: {
-    ...theme.typography.caption,
-    color: theme.colors.muted,
-    marginBottom: theme.spacing.sm,
+  screen: {
+    flex: 1,
+    backgroundColor: theme.colors.cartoon.cream,
   },
-  empty: {
+  mapHost: {
+    flex: 1,
+    overflow: 'hidden',
+  },
+  topOverlay: {
+    position: 'absolute',
+    top: theme.spacing.md,
+    left: theme.spacing.md,
+    right: theme.spacing.md,
+  },
+  topCardShadow: {
+    position: 'absolute',
+    top: 5,
+    left: 5,
+    right: -5,
+    bottom: -5,
+    borderRadius: 18,
+    borderWidth: 2,
+    borderColor: theme.colors.borderCardLight,
+    backgroundColor: theme.colors.lightAccent,
+    overflow: 'hidden',
+  },
+  topCard: {
+    borderRadius: 18,
+    borderWidth: 2,
+    borderColor: theme.colors.borderCardLight,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  topTitle: {
+    fontSize: 16,
+    lineHeight: 20,
+    fontWeight: '900',
+    color: theme.colors.cartoon.charcoal,
+  },
+  topSubtitle: {
+    ...theme.typography.caption,
+    color: theme.colors.cartoon.gray,
+  },
+  refreshButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: theme.colors.borderCardLight,
+    backgroundColor: theme.colors.cartoon.blueBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stackWrap: {
+    position: 'absolute',
+    left: theme.spacing.md,
+    right: theme.spacing.md,
+    bottom: theme.layout.tabBarHeight + theme.spacing.sm - 100,
+    minHeight: 220,
+  },
+  popupWrap: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    alignSelf: 'center',
+  },
+  popupShadow: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
+    right: -6,
+    bottom: -6,
+    borderRadius: 22,
+    borderWidth: 2,
+    borderColor: theme.colors.borderCardLight,
+    backgroundColor: theme.colors.lightAccent,
+    overflow: 'hidden',
+  },
+  popupCard: {
+    borderRadius: 22,
+    borderWidth: 2,
+    borderColor: theme.colors.borderCardLight,
+    backgroundColor: '#FFFFFF',
+    padding: theme.spacing.sm + 4,
+    minHeight: 150,
+  },
+  popupHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  customerName: {
+    fontSize: 17,
+    lineHeight: 22,
+    fontWeight: '900',
+    color: theme.colors.cartoon.charcoal,
+    flex: 1,
+    marginRight: 8,
+  },
+  detailsLink: {
+    ...theme.typography.caption,
+    color: theme.colors.cartoon.blue,
+    fontWeight: '800',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  switchButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: theme.colors.borderCardLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.cartoon.blueBg,
+  },
+  problemText: {
     ...theme.typography.body,
-    color: theme.colors.muted,
-    marginTop: theme.spacing.lg,
+    color: theme.colors.cartoon.gray,
+    marginTop: 6,
   },
-  card: {
-    marginBottom: theme.spacing.md,
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
+    marginBottom: 10,
   },
-  cardTitle: {
-    ...theme.typography.body,
-    fontWeight: theme.typography.subtitle.fontWeight,
-    color: theme.colors.text,
-  },
-  distance: {
+  metaText: {
     ...theme.typography.caption,
-    color: theme.colors.primary,
-    marginTop: theme.spacing.xs,
+    fontWeight: '700',
+    color: theme.colors.cartoon.charcoal,
   },
-  time: {
+  actionsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 2,
+  },
+  actionCell: {
+    flex: 1,
+  },
+  emptyCenter: {
+    position: 'absolute',
+    bottom: theme.layout.tabBarHeight + theme.spacing.lg,
+    alignSelf: 'center',
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: theme.colors.borderCardLight,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  emptyText: {
     ...theme.typography.caption,
-    color: theme.colors.muted,
-    marginTop: theme.spacing.xs,
-  },
-  acceptButton: {
-    marginTop: theme.spacing.sm,
+    color: theme.colors.cartoon.charcoal,
+    fontWeight: '700',
   },
 });

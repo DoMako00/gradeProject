@@ -1,5 +1,6 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import type { MechanicTabParamList } from '../types/navigation';
 import { RequestsNearbyScreen } from '../features/mechanic/screens/RequestsNearbyScreen';
 import { JobsScreen } from '../features/mechanic/screens/JobsScreen';
@@ -12,12 +13,29 @@ const Tab = createBottomTabNavigator<MechanicTabParamList>();
 export function MechanicTabs() {
   return (
     <Tab.Navigator
-      screenOptions={{
+      screenOptions={({ route }) => ({
+        headerShown: false,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textSecondary,
-        headerStyle: { backgroundColor: colors.surface },
-        headerTintColor: colors.text,
-      }}
+        tabBarStyle: {
+          backgroundColor: '#FFFFFF',
+          borderTopColor: colors.border,
+          height: 64,
+          paddingTop: 6,
+          paddingBottom: 8,
+        },
+        tabBarIcon: ({ color, size }) => {
+          const iconName =
+            route.name === 'Requests'
+              ? 'map-marker-radius-outline'
+              : route.name === 'Jobs'
+                ? 'briefcase-outline'
+                : route.name === 'Bookings'
+                  ? 'calendar-clock-outline'
+                  : 'account-circle-outline';
+          return <MaterialCommunityIcons name={iconName} size={size} color={color} />;
+        },
+      })}
     >
       <Tab.Screen
         name="Requests"

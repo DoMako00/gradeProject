@@ -102,13 +102,23 @@ export function SearchingScreen({ navigation, route }: Props) {
     Alert.alert('Help', 'Need assistance? Contact support or stay on this screen until a mechanic accepts.');
   }
 
-  function handleCancelRequest() {
+  async function handleCancelRequest() {
     Alert.alert(
       'Cancel request?',
       'You will stop searching for a mechanic. You can request again from Home.',
       [
         { text: 'Keep searching', style: 'cancel' },
-        { text: 'Cancel request', style: 'destructive', onPress: () => navigation.goBack() },
+        {
+          text: 'Cancel request',
+          style: 'destructive',
+          onPress: async () => {
+            await supabase
+              .from('requests')
+              .update({ status: 'cancelled' })
+              .eq('id', requestId);
+            navigation.goBack();
+          },
+        },
       ]
     );
   }

@@ -35,19 +35,26 @@ export type RootStackParamList = {
 };
 
 export type UserStackParamList = {
-  UserTabs: undefined;
+  UserTabs: { screen?: keyof UserTabParamList } | undefined;
   Store: undefined;
+  Cart: undefined;
   Searching: { requestId: string };
   ActiveJob: { requestId: string };
   MechanicList: undefined;
   MechanicProfile: { mechanicId: string };
   Booking: { mechanicId: string };
   BookingSuccess: { bookingId?: string };
+  EditProfile: undefined;
+  Settings: undefined;
+  AddVehicle: undefined;
+  MyVehicles: undefined;
+  PaymentMethods: undefined;
 };
 
 export type MechanicStackParamList = {
   MechanicTabs: undefined;
   ActiveJob: { requestId: string };
+  RequestDetails: { requestId: string };
 };
 
 export type AuthStackScreenProps<T extends keyof AuthStackParamList> =

@@ -18,17 +18,20 @@ const tabIcons: Record<keyof UserTabParamList, React.ComponentProps<typeof Mater
 };
 
 export function UserTabs() {
+  const cartoonColors = theme.colors.cartoon;
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
-        tabBarActiveTintColor: theme.colors.primary,
-        tabBarInactiveTintColor: theme.colors.muted,
+        tabBarActiveTintColor: cartoonColors.red,
+        tabBarInactiveTintColor: cartoonColors.gray,
         tabBarStyle: {
-          backgroundColor: theme.colors.white,
-          borderTopColor: theme.colors.border,
+          backgroundColor: 'rgba(255,255,255,0.95)',
+          borderTopColor: cartoonColors.creamDark,
           borderTopWidth: 1,
+          paddingTop: 4,
+          height: 80,
         },
-        tabBarLabelStyle: { fontSize: 10, fontWeight: '500' },
+        tabBarLabelStyle: { fontSize: 10, fontWeight: '700' },
         tabBarIcon: ({ color, size }) => (
           <MaterialCommunityIcons
             name={tabIcons[route.name]}
@@ -36,9 +39,9 @@ export function UserTabs() {
             color={color}
           />
         ),
-        headerStyle: { backgroundColor: theme.colors.white },
-        headerTintColor: theme.colors.textOnLight,
-        headerTitleStyle: { color: theme.colors.textOnLight, fontWeight: '600' },
+        headerStyle: { backgroundColor: cartoonColors.cream },
+        headerTintColor: cartoonColors.charcoal,
+        headerTitleStyle: { color: cartoonColors.charcoal, fontWeight: '700' },
       })}
     >
       <Tab.Screen

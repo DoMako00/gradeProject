@@ -6,6 +6,7 @@ import {
   Animated,
   View,
   TouchableOpacity,
+  ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -16,7 +17,9 @@ import {
   ActivityItem,
   PromoBanner,
   FloatingIconsBackground,
+  CartoonProductCard,
 } from '../../../components/ui';
+import { useCartStore } from '../../../store';
 import { getCurrentPosition } from '../../../utils/location';
 import { supabase } from '../../../lib/supabase';
 import { useAuthStore } from '../../../store';
@@ -30,70 +33,43 @@ const HEADER_HEIGHT = 60;
 /** Activity card backgrounds: all red (#d72638) for consistent look */
 const ACTIVITY_CARD_COLORS = ['#d72638'] as const;
 
-const RECENT_ACTIVITY_VISIBLE_COUNT = 3;
+const RECENT_ACTIVITY_VISIBLE_COUNT = 5;
 
-const PLACEHOLDER_USER = {
-  name: 'Alex Mitchell',
-  avatarUri: undefined as string | undefined,
+const HOME_STORE_ITEMS = [
+  { id: '1', name: 'Sport Tire Pro', description: 'All-season', price: '$89.99', icon: 'tire' as const, bgColor: '#E8F4FF', iconColor: '#6EC6FF' },
+  { id: '2', name: 'Synthetic Oil', description: '5W-30 blend', price: '$45.00', icon: 'oil' as const, bgColor: '#E8FFF3', iconColor: '#7EEAB3' },
+  { id: '3', name: 'Power Battery', description: 'Long-lasting', price: '$120.00', icon: 'car-battery' as const, bgColor: '#FFF8E8', iconColor: '#FFD66B' },
+  { id: '4', name: 'Air Filter Plus', description: 'Clean engine air', price: '$24.99', icon: 'air-filter' as const, bgColor: '#F3ECFF', iconColor: '#C4A1FF' },
+];
+
+type ActivityItemData = {
+  id: string;
+  title: string;
+  subtitle: string;
+  status: string;
+  amount: string;
+  icon: 'truck-delivery' | 'car-wrench' | 'oil' | 'car-brake-parking' | 'calendar-today' | 'hammer-wrench';
+  iconColor: string;
+  amountMuted: boolean;
+  sortAt?: number;
 };
 
-const PLACEHOLDER_ACTIVITIES = [
-  {
-    id: '1',
-    title: 'Battery Replacement',
-    subtitle: 'Delivered • Yesterday',
-    status: 'Completed at 3:42 PM',
-    amount: '$120.00',
-    icon: 'truck-delivery' as const,
-    iconColor: theme.colors.primary,
-    amountMuted: false,
-  },
-  {
-    id: '2',
-    title: 'Full Diagnostics',
-    subtitle: 'Booking • Oct 24, 2:00 PM',
-    status: 'Scheduled',
-    amount: 'Upcoming',
-    icon: 'car-wrench' as const,
-    iconColor: theme.colors.purple,
-    amountMuted: true,
-  },
-  {
-    id: '3',
-    title: 'Oil Change & Filter',
-    subtitle: 'Completed • Oct 18',
-    status: 'Service at your location',
-    amount: '$85.00',
-    icon: 'oil' as const,
-    iconColor: theme.colors.success,
-    amountMuted: false,
-  },
-  {
-    id: '4',
-    title: 'Brake Pad Replacement',
-    subtitle: 'In progress • Today',
-    status: 'Mechanic en route',
-    amount: '$240.00',
-    icon: 'car-brake-parking' as const,
-    iconColor: theme.colors.orange,
-    amountMuted: false,
-  },
-  {
-    id: '5',
-    title: 'Tire Rotation',
-    subtitle: 'Completed • Oct 12',
-    status: 'Quick service',
-    amount: '$45.00',
-    icon: 'circle-outline' as const,
-    iconColor: theme.colors.primary,
-    amountMuted: false,
-  },
-];
+function formatActivityDate(d: string, time?: string) {
+  const date = new Date(d + (time ? `T${time}` : 'Z'));
+  const now = new Date();
+  const diffDays = Math.floor((now.getTime() - date.getTime()) / (24 * 60 * 60 * 1000));
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return date.toLocaleDateString('en-US', { weekday: 'short' });
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
 
 export function HomeScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const user = useAuthStore((state) => state.user);
+  const addItem = useCartStore((s) => s.addItem);
   const [loading, setLoading] = useState(false);
+  const [activities, setActivities] = useState<ActivityItemData[]>([]);
 
   const headerTop = insets.top;
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -108,7 +84,65 @@ export function HomeScreen({ navigation }: Props) {
   const heroAnim = useRef(new Animated.Value(0)).current;
   const actionRowAnim = useRef(new Animated.Value(0)).current;
   const activityAnim = useRef(new Animated.Value(0)).current;
+  const storeAnim = useRef(new Animated.Value(0)).current;
   const promoAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    async function fetchActivities() {
+      const [requestsRes, bookingsRes] = await Promise.all([
+        supabase
+          .from('requests')
+          .select('id, status, problem_description, price, created_at')
+          .eq('user_id', user!.id)
+          .order('created_at', { ascending: false })
+          .limit(10),
+        supabase
+          .from('bookings')
+          .select('id, date, time, status')
+          .eq('user_id', user!.id)
+          .order('date', { ascending: false })
+          .order('time', { ascending: false })
+          .limit(10),
+      ]);
+      if (cancelled) return;
+      const items: ActivityItemData[] = [];
+      (requestsRes.data ?? []).forEach((r) => {
+        items.push({
+          id: `req-${r.id}`,
+          title: r.problem_description || 'Mechanic request',
+          subtitle: `${formatActivityDate(r.created_at)} • Request`,
+          status: r.status.replace('_', ' '),
+          amount: r.price != null ? `$${Number(r.price).toFixed(2)}` : '—',
+          icon: r.status === 'accepted' || r.status === 'in_progress' ? 'hammer-wrench' : 'car-wrench',
+          iconColor: theme.colors.primary,
+          amountMuted: r.status === 'pending' || r.status === 'cancelled',
+          sortAt: new Date(r.created_at).getTime(),
+        });
+      });
+      (bookingsRes.data ?? []).forEach((b) => {
+        const dt = new Date(`${b.date}T${b.time}`).getTime();
+        items.push({
+          id: `book-${b.id}`,
+          title: 'Scheduled appointment',
+          subtitle: `${formatActivityDate(b.date, b.time)} • Booking`,
+          status: b.status === 'pending' ? 'Scheduled' : b.status.replace('_', ' '),
+          amount: b.status === 'pending' ? 'Upcoming' : b.status === 'completed' ? 'Done' : '—',
+          icon: 'calendar-today',
+          iconColor: theme.colors.purple,
+          amountMuted: b.status !== 'pending',
+          sortAt: dt,
+        });
+      });
+      items.sort((a, b) => (b.sortAt ?? 0) - (a.sortAt ?? 0));
+      setActivities(items.slice(0, RECENT_ACTIVITY_VISIBLE_COUNT));
+    }
+    fetchActivities();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
 
   useEffect(() => {
     Animated.stagger(80, [
@@ -127,13 +161,18 @@ export function HomeScreen({ navigation }: Props) {
         duration: 400,
         useNativeDriver: true,
       }),
+      Animated.timing(storeAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }),
       Animated.timing(promoAnim, {
         toValue: 1,
         duration: 400,
         useNativeDriver: true,
       }),
     ]).start();
-  }, [heroAnim, actionRowAnim, activityAnim, promoAnim]);
+  }, [heroAnim, actionRowAnim, activityAnim, storeAnim, promoAnim]);
 
   const fadeIn = (anim: Animated.Value) => ({
     opacity: anim,
@@ -199,9 +238,13 @@ export function HomeScreen({ navigation }: Props) {
     navigation.navigate('Store');
   }
 
+  function handleAddStoreItem(productId: string, name: string, price: string) {
+    addItem(productId, name, price, 1);
+  }
+
   const displayUser = {
-    name: user?.name ?? PLACEHOLDER_USER.name,
-    avatarUri: PLACEHOLDER_USER.avatarUri,
+    name: user?.name ?? 'Guest',
+    avatarUri: undefined as string | undefined,
   };
 
   return (
@@ -246,6 +289,35 @@ export function HomeScreen({ navigation }: Props) {
           />
         </Animated.View>
 
+        <Animated.View style={[styles.storeSection, fadeIn(storeAnim)]}>
+          <View style={styles.recentActivityHeader}>
+            <Text style={styles.recentActivityTitle}>Shop Parts</Text>
+            <TouchableOpacity onPress={handleGoToStore}>
+              <Text style={styles.recentActivitySeeAll}>See All</Text>
+            </TouchableOpacity>
+          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.storeScrollContent}
+          >
+            {HOME_STORE_ITEMS.map((item) => (
+              <CartoonProductCard
+                key={item.id}
+                name={item.name}
+                description={item.description}
+                price={item.price}
+                iconName={item.icon}
+                bgColor={item.bgColor}
+                iconColor={item.iconColor}
+                onAddPress={() => handleAddStoreItem(item.id, item.name, item.price)}
+                compact
+                style={styles.storeCard}
+              />
+            ))}
+          </ScrollView>
+        </Animated.View>
+
         <Animated.View style={[styles.actionRow, fadeIn(actionRowAnim)]}>
           <ActionCard
             title="Book Service"
@@ -270,33 +342,37 @@ export function HomeScreen({ navigation }: Props) {
         <Animated.View style={[styles.recentActivityBlock, { marginTop: theme.spacing.lg }, fadeIn(activityAnim)]}>
           <View style={styles.recentActivityHeader}>
             <Text style={styles.recentActivityTitle}>Recent Activity</Text>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.navigate('Bookings')}>
               <Text style={styles.recentActivitySeeAll}>See All</Text>
             </TouchableOpacity>
           </View>
           <View style={styles.activityList}>
-            {PLACEHOLDER_ACTIVITIES.slice(0, RECENT_ACTIVITY_VISIBLE_COUNT).map((item, index) => {
-              const cardColor = ACTIVITY_CARD_COLORS[index % ACTIVITY_CARD_COLORS.length];
-              const shadowBackgroundColor = theme.colors.black;
-              return (
-                <ActivityItem
-                  key={item.id}
-                  title={item.title}
-                  subtitle={item.subtitle}
-                  status={item.status}
-                  amount={item.amount}
-                  icon={item.icon}
-                  iconColor={item.iconColor}
-                  amountMuted={item.amountMuted}
-                  backgroundColor={cardColor}
-                  useLightText={false}
-                  useRedText={false}
-                  shadowBackgroundColor={shadowBackgroundColor}
-                  variant="light"
-                  style={styles.activityItem}
-                />
-              );
-            })}
+            {activities.length === 0 ? (
+              <Text style={styles.emptyActivity}>No recent activity. Book a mechanic or request one from Home.</Text>
+            ) : (
+              activities.map((item, index) => {
+                const cardColor = ACTIVITY_CARD_COLORS[index % ACTIVITY_CARD_COLORS.length];
+                const shadowBackgroundColor = theme.colors.black;
+                return (
+                  <ActivityItem
+                    key={item.id}
+                    title={item.title}
+                    subtitle={item.subtitle}
+                    status={item.status}
+                    amount={item.amount}
+                    icon={item.icon}
+                    iconColor={item.iconColor}
+                    amountMuted={item.amountMuted}
+                    backgroundColor={cardColor}
+                    useLightText={false}
+                    useRedText={false}
+                    shadowBackgroundColor={shadowBackgroundColor}
+                    variant="light"
+                    style={styles.activityItem}
+                  />
+                );
+              })
+            )}
           </View>
         </Animated.View>
 
@@ -370,5 +446,23 @@ const styles = StyleSheet.create({
   },
   activityItem: {
     marginBottom: 0,
+  },
+  storeSection: {
+    marginTop: theme.spacing.md,
+  },
+  storeScrollContent: {
+    paddingHorizontal: theme.spacing.sm,
+    gap: theme.spacing.sm,
+    paddingBottom: theme.spacing.sm,
+  },
+  storeCard: {
+    width: 89,
+    flex: 0,
+  },
+  emptyActivity: {
+    ...theme.typography.body,
+    color: theme.colors.muted,
+    textAlign: 'center',
+    paddingVertical: theme.spacing.lg,
   },
 });

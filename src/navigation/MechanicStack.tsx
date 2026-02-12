@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import type { MechanicStackParamList } from '../types/navigation';
 import { MechanicTabs } from './MechanicTabs';
 import { MechanicActiveJobScreen } from '../features/mechanic/screens/ActiveJobScreen';
+import { RequestDetailsScreen } from '../features/mechanic/screens/MechanicRequestDetailsScreen';
 import { colors } from '../theme';
 
 const Stack = createNativeStackNavigator<MechanicStackParamList>();
@@ -24,6 +25,11 @@ export function MechanicStack() {
         name="ActiveJob"
         component={MechanicActiveJobScreen}
         options={{ title: 'Active job' }}
+      />
+      <Stack.Screen
+        name="RequestDetails"
+        component={RequestDetailsScreen}
+        options={{ title: 'Request details' }}
       />
     </Stack.Navigator>
   );

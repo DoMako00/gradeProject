@@ -11,13 +11,14 @@ import { theme } from '../../../theme';
 import type { Booking } from '../../../types';
 import type { UserTabScreenProps } from '../../../types/navigation';
 
+type BookingWithMechanic = Booking & { mechanicName?: string };
 type Props = UserTabScreenProps<'Bookings'>;
 
 const PLACEHOLDER_USER = { name: 'Alex Mitchell', avatarUri: undefined as string | undefined };
 
 export function BookingsScreen({ navigation }: Props) {
   const user = useAuthStore((state) => state.user);
-  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [bookings, setBookings] = useState<BookingWithMechanic[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -28,7 +29,7 @@ export function BookingsScreen({ navigation }: Props) {
     let cancelled = false;
 
     async function fetchBookings() {
-      const { data, error } = await supabase
+      const { data: bookingsData, error } = await supabase
         .from('bookings')
         .select('id, user_id, mechanic_id, date, time, status, created_at')
         .eq('user_id', user!.id)
@@ -38,9 +39,44 @@ export function BookingsScreen({ navigation }: Props) {
       if (cancelled) return;
       if (error) {
         setBookings([]);
-      } else {
-        setBookings(data ?? []);
+        setLoading(false);
+        return;
       }
+
+      const bookings = bookingsData ?? [];
+      if (bookings.length === 0) {
+        setBookings([]);
+        setLoading(false);
+        return;
+      }
+
+      const mechanicIds = [...new Set(bookings.map((b) => b.mechanic_id))];
+      const { data: mechanicsData } = await supabase
+        .from('mechanics')
+        .select('id, user_id, workshop_name')
+        .in('id', mechanicIds);
+
+      if (cancelled) return;
+      const userIds = (mechanicsData ?? []).map((m) => m.user_id);
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('id, name')
+        .in('id', userIds);
+
+      if (cancelled) return;
+      const profileMap = new Map((profilesData ?? []).map((p) => [p.id, p.name]));
+      const mechanicMap = new Map(
+        (mechanicsData ?? []).map((m) => [
+          m.id,
+          m.workshop_name || profileMap.get(m.user_id) || 'Mechanic',
+        ])
+      );
+
+      const enriched = bookings.map((b) => ({
+        ...b,
+        mechanicName: mechanicMap.get(b.mechanic_id) ?? 'Mechanic',
+      }));
+      setBookings(enriched);
       setLoading(false);
     }
 
@@ -102,6 +138,7 @@ export function BookingsScreen({ navigation }: Props) {
         renderItem={({ item }) => (
           <Card style={styles.cardItem}>
             <Text style={styles.date}>{formatDate(item.date)} at {item.time}</Text>
+            <Text style={styles.mechanic}>{item.mechanicName ?? 'Mechanic'}</Text>
             <Text style={styles.status}>Status: {item.status}</Text>
           </Card>
         )}
@@ -142,6 +179,11 @@ const styles = StyleSheet.create({
     ...theme.typography.body,
     fontWeight: theme.typography.subtitle.fontWeight,
     color: theme.colors.textOnLight,
+  },
+  mechanic: {
+    ...theme.typography.caption,
+    color: theme.colors.muted,
+    marginTop: theme.spacing.xs,
   },
   status: {
     ...theme.typography.caption,

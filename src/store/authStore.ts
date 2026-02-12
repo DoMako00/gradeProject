@@ -3,6 +3,7 @@ import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import {
   ensureProfileExists,
+  ensureMechanicRoleAndRow,
   authUserFromSession,
   getSessionWithProfile,
   type ProfileRow,
@@ -46,19 +47,46 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   ...initialState,
 
   setSession: (session, profile, user) =>
-    set({
-      session,
-      profile,
-      user,
-      isAuthenticated: !!user,
+    set(() => {
+      console.log(
+        '[authStore] setSession',
+        JSON.stringify(
+          {
+            hasSession: !!session,
+            userId: user?.id,
+            role: user?.role,
+          },
+          null,
+          2
+        )
+      );
+      return {
+        session,
+        profile,
+        user,
+        isAuthenticated: !!user,
+      };
     }),
 
   setUser: (user) =>
-    set({
-      user,
-      isAuthenticated: !!user,
-      session: user ? get().session : null,
-      profile: user ? get().profile : null,
+    set(() => {
+      console.log(
+        '[authStore] setUser',
+        JSON.stringify(
+          {
+            userId: user?.id,
+            role: user?.role,
+          },
+          null,
+          2
+        )
+      );
+      return {
+        user,
+        isAuthenticated: !!user,
+        session: user ? get().session : null,
+        profile: user ? get().profile : null,
+      };
     }),
 
   setLoading: (isLoading) => set({ isLoading }),
@@ -68,8 +96,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (error) throw error;
     const session = data.session;
     if (!session) throw new Error('No session after sign in');
-    const profile = await ensureProfileExists(session);
+    let profile = await ensureProfileExists(session);
+    profile = await ensureMechanicRoleAndRow(session, profile);
     const authUser = authUserFromSession(session, profile);
+    console.log(
+      '[authStore] signIn success',
+      JSON.stringify(
+        {
+          userId: authUser.id,
+          role: authUser.role,
+          email: authUser.email,
+        },
+        null,
+        2
+      )
+    );
     set({
       session,
       user: authUser,
@@ -93,8 +134,32 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     });
     if (error) throw error;
     if (data.session) {
-      const profile = await ensureProfileExists(data.session);
-      const authUser = authUserFromSession(data.session, profile);
+      let profile = await ensureProfileExists(data.session);
+      profile = await ensureMechanicRoleAndRow(data.session, profile);
+
+      // Build base AuthUser from session + profile
+      let authUser = authUserFromSession(data.session, profile);
+
+      // Trust the explicit role selected at signup (payload.role),
+      // while keeping DB profile.role in sync via ensureMechanicRoleAndRow.
+      if (payload.role === 'mechanic' || payload.role === 'seller') {
+        authUser = { ...authUser, role: payload.role };
+      } else {
+        authUser = { ...authUser, role: 'user' };
+      }
+      console.log(
+        '[authStore] signUp success',
+        JSON.stringify(
+          {
+            userId: authUser.id,
+            role: authUser.role,
+            email: authUser.email,
+            requestedRole: payload.role,
+          },
+          null,
+          2
+        )
+      );
       set({
         session: data.session,
         user: authUser,
@@ -109,6 +174,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   signOut: async () => {
     await supabase.auth.signOut();
+    console.log('[authStore] signOut');
     set({ ...initialState });
   },
 
