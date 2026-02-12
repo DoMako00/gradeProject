@@ -8,14 +8,23 @@ export interface ProfileRow {
   name: string | null;
   email: string | null;
   phone: string | null;
+  avatar_url: string | null;
   role: Role;
+}
+
+function roleFromSession(session: Session): Role {
+  const meta = session.user.user_metadata as Record<string, unknown> | undefined;
+  const rawMeta = (session.user as { raw_user_meta_data?: Record<string, unknown> }).raw_user_meta_data;
+  const appMeta = session.user.app_metadata as Record<string, unknown> | undefined;
+  const rawRole = (meta?.role ?? rawMeta?.role ?? appMeta?.role) as string | undefined;
+  return rawRole === 'mechanic' || rawRole === 'seller' ? rawRole : 'user';
 }
 
 /** Fetch profile by user id. Returns null if not found or RLS denies. */
 export async function fetchProfile(userId: string): Promise<ProfileRow | null> {
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, name, email, phone, role')
+    .select('id, name, email, phone, avatar_url, role')
     .eq('id', userId)
     .single();
   if (error || !data) return null;
@@ -27,16 +36,30 @@ export async function ensureProfileExists(session: Session): Promise<ProfileRow 
   const existing = await fetchProfile(session.user.id);
   if (existing) return existing;
 
-  const meta = session.user.user_metadata ?? {};
-  const rawRole = meta.role as string | undefined;
-  const role: Role =
-    rawRole === 'mechanic' || rawRole === 'seller' ? rawRole : 'user';
+  const meta = session.user.user_metadata as Record<string, unknown> | undefined;
+  const role = roleFromSession(session);
+
+  console.log(
+    '[authHelpers] ensureProfileExists creating profile',
+    JSON.stringify(
+      {
+        userId: session.user.id,
+        metaRole: (meta?.role as string | undefined) ?? null,
+        resolvedRole: role,
+      },
+      null,
+      2
+    )
+  );
 
   const { error } = await supabase.from('profiles').insert({
     id: session.user.id,
-    name: (meta.name ?? meta.full_name ?? session.user.email?.split('@')[0] ?? null) as string | null,
+    name: ((meta?.name ??
+      meta?.full_name ??
+      session.user.email?.split('@')[0] ??
+      null) ?? null) as string | null,
     email: session.user.email ?? null,
-    phone: (meta.phone as string | undefined) ?? null,
+    phone: (meta?.phone as string | undefined) ?? null,
     role,
   });
 
@@ -50,13 +73,14 @@ export function authUserFromSession(session: Session, profile: ProfileRow | null
   const id = session.user.id;
   const email = session.user.email ?? '';
   const name = profile?.name ?? session.user.user_metadata?.name ?? email.split('@')[0] ?? 'User';
-  const role: Role = profile?.role ?? 'user';
+  const role: Role = profile?.role ?? roleFromSession(session);
   return {
     id,
     name,
     email,
     role,
     phone: profile?.phone ?? undefined,
+    avatar_url: profile?.avatar_url ?? undefined,
     token: session.access_token,
   };
 }
@@ -67,6 +91,58 @@ export async function getAuthUserFromSession(): Promise<AuthUser | null> {
   return result?.authUser ?? null;
 }
 
+/** Ensure profile has correct role from metadata (fixes trigger edge cases) and mechanics row exists for mechanics. */
+export async function ensureMechanicRoleAndRow(
+  session: Session,
+  profile: ProfileRow | null
+): Promise<ProfileRow | null> {
+  const meta = session.user.user_metadata as Record<string, string> | undefined;
+  const rawMeta = (session.user as { raw_user_meta_data?: Record<string, string> }).raw_user_meta_data;
+  const metaRole = meta?.role ?? rawMeta?.role;
+  const targetRole: Role = roleFromSession(session);
+
+  console.log(
+    '[authHelpers] ensureMechanicRoleAndRow',
+    JSON.stringify(
+      {
+        userId: session.user.id,
+        metaRole,
+        existingProfileRole: profile?.role,
+        targetRole,
+      },
+      null,
+      2
+    )
+  );
+
+  // If profile has wrong role but metadata says mechanic/seller, update profile
+  if (profile && profile.role !== targetRole && (targetRole === 'mechanic' || targetRole === 'seller')) {
+    await supabase
+      .from('profiles')
+      .update({ role: targetRole })
+      .eq('id', session.user.id);
+    const updated = await fetchProfile(session.user.id);
+    if (updated) return updated;
+  }
+
+  // If mechanic, ensure mechanics row exists
+  if (targetRole === 'mechanic' && (profile?.role === 'mechanic' || targetRole === 'mechanic')) {
+    const { data: existing } = await supabase
+      .from('mechanics')
+      .select('id')
+      .eq('user_id', session.user.id)
+      .maybeSingle();
+    if (!existing) {
+      console.log('[authHelpers] Creating mechanics row for user', session.user.id);
+      await supabase.from('mechanics').insert({ user_id: session.user.id });
+    } else {
+      console.log('[authHelpers] Mechanics row already exists for user', session.user.id);
+    }
+  }
+
+  return profile;
+}
+
 /** Get current session, profile, and authUser. Returns null if no session. Use for store hydration. */
 export async function getSessionWithProfile(): Promise<{
   session: Session;
@@ -75,7 +151,8 @@ export async function getSessionWithProfile(): Promise<{
 } | null> {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) return null;
-  const profile = await ensureProfileExists(session);
+  let profile = await ensureProfileExists(session);
+  profile = await ensureMechanicRoleAndRow(session, profile);
   const authUser = authUserFromSession(session, profile);
   return { session, profile, authUser };
 }

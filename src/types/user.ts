@@ -6,6 +6,7 @@ export interface User {
   email: string;
   role: Role;
   phone?: string | null;
+  avatar_url?: string | null;
 }
 
 export interface AuthUser extends User {

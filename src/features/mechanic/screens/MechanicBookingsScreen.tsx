@@ -1,14 +1,23 @@
 import React, { useEffect, useState } from 'react';
 import {
+  View,
   Text,
   StyleSheet,
   FlatList,
 } from 'react-native';
-import { ScreenContainer, Header, Card, Spinner } from '../../../components/ui';
+import {
+  ScreenContainer,
+  CartoonEmptyState,
+  FloatingIconsBackground,
+  SketchFill,
+  Spinner,
+} from '../../../components/ui';
 import { supabase } from '../../../lib/supabase';
 import { getMechanicId } from '../../../lib/mechanicHelpers';
 import { theme } from '../../../theme';
 import type { Booking } from '../../../types';
+
+const c = theme.colors.cartoon;
 
 export function MechanicBookingsScreen() {
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -61,8 +70,8 @@ export function MechanicBookingsScreen() {
 
   if (loading) {
     return (
-      <ScreenContainer>
-        <Header title="Bookings" />
+      <ScreenContainer style={styles.screen} edges={['top', 'left', 'right']}>
+        <FloatingIconsBackground />
         <Spinner style={styles.centered} />
       </ScreenContainer>
     );
@@ -70,29 +79,38 @@ export function MechanicBookingsScreen() {
 
   if (error) {
     return (
-      <ScreenContainer>
-        <Header title="Bookings" />
+      <ScreenContainer style={styles.screen} edges={['top', 'left', 'right']}>
+        <FloatingIconsBackground />
         <Text style={styles.error}>{error}</Text>
       </ScreenContainer>
     );
   }
 
   return (
-    <ScreenContainer>
-      <Header title="Bookings" />
+    <ScreenContainer style={styles.screen} edges={['top', 'left', 'right']}>
+      <FloatingIconsBackground />
       <Text style={styles.subtitle}>Appointments booked by customers</Text>
       <FlatList
         data={bookings}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
         ListEmptyComponent={
-          <Text style={styles.empty}>No bookings yet.</Text>
+          <CartoonEmptyState
+            icon="calendar-blank-outline"
+            title="No bookings yet"
+            message="Bookings from customers will appear here."
+          />
         }
         renderItem={({ item }) => (
-          <Card style={styles.cardItem}>
+          <View style={styles.cardWrap}>
+            <View style={styles.cardShadow}>
+              <SketchFill />
+            </View>
+            <View style={styles.cardItem}>
             <Text style={styles.date}>{formatDate(item.date)} at {item.time}</Text>
             <Text style={styles.status}>Status: {item.status}</Text>
-          </Card>
+            </View>
+          </View>
         )}
       />
     </ScreenContainer>
@@ -100,32 +118,51 @@ export function MechanicBookingsScreen() {
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: c.cream,
+    paddingHorizontal: theme.spacing.md,
+  },
   subtitle: {
     ...theme.typography.caption,
-    color: theme.colors.muted,
-    marginBottom: theme.spacing.lg,
+    color: c.gray,
+    marginBottom: theme.spacing.md,
   },
   list: {
-    paddingBottom: theme.spacing.xl,
+    paddingBottom: theme.spacing.xl + theme.layout.tabBarHeight,
+  },
+  cardWrap: {
+    position: 'relative',
+    marginBottom: theme.spacing.md,
+  },
+  cardShadow: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
+    right: -6,
+    bottom: -6,
+    borderRadius: 20,
+    backgroundColor: theme.colors.lightAccent,
+    borderWidth: 2,
+    borderColor: theme.colors.borderCardLight,
+    overflow: 'hidden',
   },
   cardItem: {
-    marginBottom: theme.spacing.md,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: theme.colors.borderCardLight,
+    backgroundColor: '#FFFFFF',
+    padding: theme.spacing.md,
   },
   date: {
     ...theme.typography.body,
-    fontWeight: theme.typography.subtitle.fontWeight,
-    color: theme.colors.text,
+    fontWeight: '700',
+    color: c.charcoal,
   },
   status: {
     ...theme.typography.caption,
-    color: theme.colors.muted,
+    color: c.gray,
     marginTop: theme.spacing.xs,
-  },
-  empty: {
-    ...theme.typography.body,
-    color: theme.colors.muted,
-    textAlign: 'center',
-    marginTop: theme.spacing.xl,
   },
   error: {
     ...theme.typography.body,

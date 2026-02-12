@@ -1,23 +1,20 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Animated,
-  Dimensions,
+  Alert,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import {
-  ScreenContainer,
-  CategoryPills,
-  ProductCard,
-} from '../../../components/ui';
+import { ScreenContainer } from '../../../components/ui';
 import { CartoonStoreHeader } from '../../../components/ui/CartoonStoreHeader';
 import { CartoonFeaturedCard } from '../../../components/ui/CartoonFeaturedCard';
 import { CartoonCategoryCard } from '../../../components/ui/CartoonCategoryCard';
 import { CartoonProductCard } from '../../../components/ui/CartoonProductCard';
+import { useAuth } from '../../../hooks/useAuth';
+import { useCartStore } from '../../../store';
 import { theme } from '../../../theme';
 import type { UserTabScreenProps } from '../../../types/navigation';
 
@@ -92,18 +89,36 @@ const POPULAR_PRODUCTS = [
 ];
 
 export function UserStoreScreen({ navigation }: Props) {
-  const [cartCount, setCartCount] = useState(3);
+  const { user } = useAuth();
+  const addItem = useCartStore((s) => s.addItem);
+  const cartCount = useCartStore((s) => s.getCount());
 
-  function handleAddProduct(productId: string) {
-    setCartCount((prev) => prev + 1);
-  }
+  const userName = user?.name?.split(' ')[0] ?? 'Guest';
 
   function handleCartPress() {
-    // Navigate to cart
+    const stack = navigation.getParent();
+    if (stack && 'navigate' in stack) {
+      (stack as { navigate: (name: string) => void }).navigate('Cart');
+    }
+  }
+
+  function handleAddProduct(productId: string, name: string, price: string) {
+    addItem(productId, name, price, 1);
   }
 
   function handleNotificationPress() {
-    // Navigate to notifications
+    Alert.alert('Notifications', 'No new notifications.');
+  }
+
+  const scrollRef = useRef<ScrollView>(null);
+  const productsSectionRef = useRef<View>(null);
+
+  function handleCategoryPress(categoryId: string) {
+    // Filter products by category - for now no-op, products are static
+  }
+
+  function handleSeeAll() {
+    scrollRef.current?.scrollToEnd({ animated: true });
   }
 
   return (
@@ -115,12 +130,15 @@ export function UserStoreScreen({ navigation }: Props) {
 
       {/* Header */}
       <CartoonStoreHeader
-        userName="Mohamed"
-        notificationCount={3}
+        userName={userName}
+        notificationCount={0}
         onNotificationPress={handleNotificationPress}
+        cartCount={cartCount}
+        onCartPress={handleCartPress}
       />
 
       <ScrollView
+        ref={scrollRef}
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -132,7 +150,7 @@ export function UserStoreScreen({ navigation }: Props) {
           description="Keep your engine happy & smooth!"
           price="$45.99"
           originalPrice="$59.99"
-          onAddToCart={() => handleAddProduct('featured')}
+          onAddToCart={() => handleAddProduct('featured', 'Premium Engine Oil', '$45.99')}
           style={styles.featured}
         />
 
@@ -153,15 +171,15 @@ export function UserStoreScreen({ navigation }: Props) {
               iconName={cat.icon}
               bgColor={cat.bgColor}
               iconColor={cat.iconColor}
-              onPress={() => {}}
+              onPress={() => handleCategoryPress(cat.id)}
             />
           ))}
         </ScrollView>
 
         {/* Popular Products */}
-        <View style={styles.sectionHeader}>
+        <View ref={productsSectionRef} style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Popular Products</Text>
-          <TouchableOpacity activeOpacity={0.7}>
+          <TouchableOpacity onPress={handleSeeAll} activeOpacity={0.7}>
             <Text style={styles.seeAll}>See All</Text>
           </TouchableOpacity>
         </View>
@@ -182,7 +200,7 @@ export function UserStoreScreen({ navigation }: Props) {
                   iconName={product.icon}
                   bgColor={product.bgColor}
                   iconColor={product.iconColor}
-                  onAddPress={() => handleAddProduct(product.id)}
+                  onAddPress={() => handleAddProduct(product.id, product.name, product.price)}
                   style={styles.productCard}
                 />
               ))}

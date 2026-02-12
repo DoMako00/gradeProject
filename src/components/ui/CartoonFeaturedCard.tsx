@@ -8,6 +8,7 @@ import {
   Animated,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { SketchFill } from './SketchFill';
 import { theme } from '../../theme';
 
 const c = theme.colors.cartoon;
@@ -58,65 +59,82 @@ export function CartoonFeaturedCard({
   });
 
   return (
-    <View style={[styles.card, style]}>
-      {/* Decorative circles */}
-      <View style={styles.decoCircle1} />
-      <View style={styles.decoCircle2} />
-      <View style={styles.decoCircle3} />
+    <View style={[styles.shadowWrapper, style]}>
+      <View style={styles.shadowOffset}>
+        <SketchFill />
+      </View>
+      <View style={styles.card}>
+        {/* Decorative circles */}
+        <View style={styles.decoCircle1} />
+        <View style={styles.decoCircle2} />
+        <View style={styles.decoCircle3} />
 
-      <View style={styles.content}>
-        <View style={styles.leftContent}>
-          {badge ? (
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{badge}</Text>
-            </View>
-          ) : null}
-          <Text style={styles.title}>{title}</Text>
-          {description ? (
-            <Text style={styles.description}>{description}</Text>
-          ) : null}
-          <View style={styles.priceRow}>
-            <Text style={styles.price}>{price}</Text>
-            {originalPrice ? (
-              <Text style={styles.originalPrice}>{originalPrice}</Text>
+        <View style={styles.content}>
+          <View style={styles.leftContent}>
+            {badge ? (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{badge}</Text>
+              </View>
             ) : null}
+            <Text style={styles.title}>{title}</Text>
+            {description ? (
+              <Text style={styles.description}>{description}</Text>
+            ) : null}
+            <View style={styles.priceRow}>
+              <Text style={styles.price}>{price}</Text>
+              {originalPrice ? (
+                <Text style={styles.originalPrice}>{originalPrice}</Text>
+              ) : null}
+            </View>
+            <TouchableOpacity
+              style={styles.addButton}
+              onPress={onAddToCart}
+              activeOpacity={0.8}
+            >
+              <MaterialCommunityIcons name="cart-plus" size={18} color={c.red} />
+              <Text style={styles.addButtonText}>Add to Cart</Text>
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity
-            style={styles.addButton}
-            onPress={onAddToCart}
-            activeOpacity={0.8}
-          >
-            <MaterialCommunityIcons name="cart-plus" size={18} color={c.red} />
-            <Text style={styles.addButtonText}>Add to Cart</Text>
-          </TouchableOpacity>
-        </View>
 
-        {/* Floating cartoon icon */}
-        <Animated.View
-          style={[
-            styles.iconContainer,
-            { transform: [{ translateY: floatY }] },
-          ]}
-        >
-          <MaterialCommunityIcons name="oil" size={64} color="#FFFFFF" />
-        </Animated.View>
+          {/* Floating cartoon icon */}
+          <Animated.View
+            style={[
+              styles.iconContainer,
+              { transform: [{ translateY: floatY }] },
+            ]}
+          >
+            <MaterialCommunityIcons name="oil" size={64} color="#FFFFFF" />
+          </Animated.View>
+        </View>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  shadowWrapper: {
+    position: 'relative',
+  },
+  shadowOffset: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    right: -8,
+    bottom: -8,
+    borderRadius: 28,
+    backgroundColor: theme.colors.lightAccent,
+    borderWidth: 2,
+    borderColor: theme.colors.borderCardLight,
+    overflow: 'hidden',
+  },
   card: {
     borderRadius: 28,
     overflow: 'hidden',
     position: 'relative',
     backgroundColor: c.red,
     padding: 20,
-    shadowColor: c.red,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.25,
-    shadowRadius: 20,
-    elevation: 8,
+    borderWidth: 2,
+    borderColor: theme.colors.borderCardDark,
   },
   decoCircle1: {
     position: 'absolute',
@@ -208,11 +226,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
   },
   addButtonText: {
     fontSize: 14,

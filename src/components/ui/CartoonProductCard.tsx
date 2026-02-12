@@ -7,6 +7,7 @@ import {
   ViewStyle,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { SketchFill } from './SketchFill';
 import { theme } from '../../theme';
 
 const c = theme.colors.cartoon;
@@ -21,6 +22,7 @@ interface CartoonProductCardProps {
   bgColor: string;
   iconColor: string;
   onAddPress?: () => void;
+  compact?: boolean;
   style?: ViewStyle;
 }
 
@@ -32,56 +34,75 @@ export function CartoonProductCard({
   bgColor,
   iconColor,
   onAddPress,
+  compact = false,
   style,
 }: CartoonProductCardProps) {
+  const cardStyles = compact ? stylesCompact : styles;
   return (
-    <View style={[styles.card, style]}>
-      {/* Floating + button */}
-      <TouchableOpacity
-        style={styles.addButton}
-        onPress={onAddPress}
-        activeOpacity={0.8}
-        accessibilityLabel={`Add ${name} to cart`}
-      >
-        <MaterialCommunityIcons name="plus" size={18} color="#FFFFFF" />
-      </TouchableOpacity>
-
-      {/* Product illustration area */}
-      <View style={[styles.illustrationArea, { backgroundColor: bgColor }]}>
-        <View style={styles.illustrationBlob} />
-        <MaterialCommunityIcons name={iconName} size={48} color={iconColor} />
+    <View style={[cardStyles.shadowWrapper, style]}>
+      <View style={cardStyles.shadowOffset}>
+        <SketchFill />
       </View>
+      <View style={cardStyles.card}>
+        {/* Floating + button */}
+        <TouchableOpacity
+          style={cardStyles.addButton}
+          onPress={onAddPress}
+          activeOpacity={0.8}
+          accessibilityLabel={`Add ${name} to cart`}
+        >
+          <MaterialCommunityIcons name="plus" size={compact ? 14 : 18} color="#FFFFFF" />
+        </TouchableOpacity>
 
-      {/* Product info */}
-      <Text style={styles.name} numberOfLines={1}>
-        {name}
-      </Text>
-      {description ? (
-        <Text style={styles.description} numberOfLines={1}>
-          {description}
+        {/* Product illustration area */}
+        <View style={[cardStyles.illustrationArea, { backgroundColor: bgColor }]}>
+          <View style={cardStyles.illustrationBlob} />
+          <MaterialCommunityIcons name={iconName} size={compact ? 28 : 48} color={iconColor} />
+        </View>
+
+        {/* Product info */}
+        <Text style={cardStyles.name} numberOfLines={1}>
+          {name}
         </Text>
-      ) : null}
+        {description && !compact ? (
+          <Text style={cardStyles.description} numberOfLines={1}>
+            {description}
+          </Text>
+        ) : null}
 
-      {/* Price badge */}
-      <View style={styles.priceBadge}>
-        <Text style={styles.priceText}>{price}</Text>
+        {/* Price badge */}
+        <View style={cardStyles.priceBadge}>
+          <Text style={cardStyles.priceText}>{price}</Text>
+        </View>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  shadowWrapper: {
+    position: 'relative',
+  },
+  shadowOffset: {
+    position: 'absolute',
+    top: 5,
+    left: 5,
+    right: -5,
+    bottom: -5,
+    borderRadius: 20,
+    backgroundColor: theme.colors.lightAccent,
+    borderWidth: 2,
+    borderColor: theme.colors.borderCardLight,
+    overflow: 'hidden',
+  },
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
     padding: 14,
     position: 'relative',
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    elevation: 3,
+    borderWidth: 2,
+    borderColor: theme.colors.borderCardLight,
   },
   addButton: {
     position: 'absolute',
@@ -94,11 +115,6 @@ const styles = StyleSheet.create({
     backgroundColor: c.red,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: c.red,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 4,
   },
   illustrationArea: {
     aspectRatio: 1,
@@ -140,6 +156,86 @@ const styles = StyleSheet.create({
   },
   priceText: {
     fontSize: 15,
+    fontWeight: '900',
+    color: c.red,
+  },
+});
+
+const stylesCompact = StyleSheet.create({
+  shadowWrapper: { position: 'relative' },
+  shadowOffset: {
+    position: 'absolute',
+    top: 3,
+    left: 3,
+    right: -3,
+    bottom: -3,
+    borderRadius: 14,
+    backgroundColor: theme.colors.lightAccent,
+    borderWidth: 1.5,
+    borderColor: theme.colors.borderCardLight,
+    overflow: 'hidden',
+  },
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 8,
+    position: 'relative',
+    overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: theme.colors.borderCardLight,
+  },
+  addButton: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    zIndex: 10,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: c.red,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  illustrationArea: {
+    aspectRatio: 1,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  illustrationBlob: {
+    position: 'absolute',
+    bottom: -6,
+    right: -6,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0,0,0,0.03)',
+  },
+  name: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: c.charcoal,
+    lineHeight: 14,
+    marginBottom: 1,
+  },
+  description: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: c.gray,
+    marginBottom: 4,
+  },
+  priceBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: `${c.red}15`,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  priceText: {
+    fontSize: 11,
     fontWeight: '900',
     color: c.red,
   },
